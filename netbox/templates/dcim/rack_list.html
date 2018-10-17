@@ -1,30 +1,27 @@
 {% extends '_base.html' %}
-{% load helpers %}
-
-{% block title %}Racks{% endblock %}
+{% load buttons %}
 
 {% block content %}
 <div class="pull-right">
     {% if perms.dcim.add_rack %}
-        <a href="{% url 'dcim:rack_add' %}" class="btn btn-primary">
-            <span class="fa fa-plus" aria-hidden="true"></span>
-            Add a rack
-        </a>
-        <a href="{% url 'dcim:rack_import' %}" class="btn btn-info">
-            <span class="fa fa-download" aria-hidden="true"></span>
-            Import racks
-        </a>
+        {% add_button 'dcim:rack_add' %}
+        {% import_button 'dcim:rack_import' %}
     {% endif %}
-    {% include 'inc/export_button.html' with obj_type='racks' %}
+    {% export_button content_type %}
 </div>
-<h1>Racks</h1>
+<h1>{% block title %}Racks{% endblock %}</h1>
 <div class="row">
 	<div class="col-md-9">
         {% include 'utilities/obj_table.html' with bulk_edit_url='dcim:rack_bulk_edit' bulk_delete_url='dcim:rack_bulk_delete' %}
     </div>
     <div class="col-md-3">
 		{% include 'inc/search_panel.html' %}
-		{% include 'inc/filter_panel.html' %}
+		{% include 'inc/tags_panel.html' %}
     </div>
 </div>
 {% endblock %}
+
+{% block javascript %}
+    {% include 'dcim/inc/filter_rack_group.html' %}
+{% endblock %}
+

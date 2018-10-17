@@ -1,47 +1,37 @@
+from __future__ import unicode_literals
+
 from django import forms
+from django.db.models import Count
+from taggit.forms import TagField
 
-from extras.forms import CustomFieldForm, CustomFieldBulkEditForm, CustomFieldFilterForm
+from extras.forms import AddRemoveTagsForm, CustomFieldForm, CustomFieldBulkEditForm, CustomFieldFilterForm
 from utilities.forms import (
-    BootstrapMixin, BulkImportForm, CommentField, CSVDataField, FilterChoiceField, SlugField, get_filter_choices,
+    APISelect, BootstrapMixin, ChainedFieldsMixin, ChainedModelChoiceField, CommentField, FilterChoiceField, SlugField,
 )
-
 from .models import Tenant, TenantGroup
-
-
-def bulkedit_tenantgroup_choices():
-    """
-    Include an option to remove the currently assigned TenantGroup from a Tenant.
-    """
-    choices = [
-        (None, '---------'),
-        (0, 'None'),
-    ]
-    choices += [(g.pk, g.name) for g in TenantGroup.objects.all()]
-    return choices
-
-
-def bulkedit_tenant_choices():
-    """
-    Include an option to remove the currently assigned Tenant from an object.
-    """
-    choices = [
-        (None, '---------'),
-        (0, 'None'),
-    ]
-    choices += [(t.pk, t.name) for t in Tenant.objects.all()]
-    return choices
 
 
 #
 # Tenant groups
 #
 
-class TenantGroupForm(forms.ModelForm, BootstrapMixin):
+class TenantGroupForm(BootstrapMixin, forms.ModelForm):
     slug = SlugField()
 
     class Meta:
         model = TenantGroup
         fields = ['name', 'slug']
+
+
+class TenantGroupCSVForm(forms.ModelForm):
+    slug = SlugField()
+
+    class Meta:
+        model = TenantGroup
+        fields = TenantGroup.csv_headers
+        help_texts = {
+            'name': 'Group name',
+        }
 
 
 #
@@ -51,30 +41,82 @@ class TenantGroupForm(forms.ModelForm, BootstrapMixin):
 class TenantForm(BootstrapMixin, CustomFieldForm):
     slug = SlugField()
     comments = CommentField()
+    tags = TagField(required=False)
 
     class Meta:
         model = Tenant
-        fields = ['name', 'slug', 'group', 'description', 'comments']
+        fields = ['name', 'slug', 'group', 'description', 'comments', 'tags']
 
 
-class TenantFromCSVForm(forms.ModelForm):
-    group = forms.ModelChoiceField(TenantGroup.objects.all(), required=False, to_field_name='name',
-                                   error_messages={'invalid_choice': 'Group not found.'})
+class TenantCSVForm(forms.ModelForm):
+    slug = SlugField()
+    group = forms.ModelChoiceField(
+        queryset=TenantGroup.objects.all(),
+        required=False,
+        to_field_name='name',
+        help_text='Name of parent group',
+        error_messages={
+            'invalid_choice': 'Group not found.'
+        }
+    )
 
     class Meta:
         model = Tenant
-        fields = ['name', 'slug', 'group', 'description']
+        fields = Tenant.csv_headers
+        help_texts = {
+            'name': 'Tenant name',
+            'comments': 'Free-form comments'
+        }
 
 
-class TenantImportForm(BulkImportForm, BootstrapMixin):
-    csv = CSVDataField(csv_form=TenantFromCSVForm)
-
-
-class TenantBulkEditForm(BootstrapMixin, CustomFieldBulkEditForm):
+class TenantBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditForm):
     pk = forms.ModelMultipleChoiceField(queryset=Tenant.objects.all(), widget=forms.MultipleHiddenInput)
-    group = forms.TypedChoiceField(choices=bulkedit_tenantgroup_choices, coerce=int, required=False, label='Group')
+    group = forms.ModelChoiceField(queryset=TenantGroup.objects.all(), required=False)
+
+    class Meta:
+        nullable_fields = ['group']
 
 
 class TenantFilterForm(BootstrapMixin, CustomFieldFilterForm):
     model = Tenant
-    group = FilterChoiceField(choices=get_filter_choices(TenantGroup, id_field='slug', count_field='tenants'))
+    q = forms.CharField(required=False, label='Search')
+    group = FilterChoiceField(
+        queryset=TenantGroup.objects.annotate(filter_count=Count('tenants')),
+        to_field_name='slug',
+        null_label='-- None --'
+    )
+
+
+#
+# Tenancy form extension
+#
+
+class TenancyForm(ChainedFieldsMixin, forms.Form):
+    tenant_group = forms.ModelChoiceField(
+        queryset=TenantGroup.objects.all(),
+        required=False,
+        widget=forms.Select(
+            attrs={'filter-for': 'tenant', 'nullable': 'true'}
+        )
+    )
+    tenant = ChainedModelChoiceField(
+        queryset=Tenant.objects.all(),
+        chains=(
+            ('group', 'tenant_group'),
+        ),
+        required=False,
+        widget=APISelect(
+            api_url='/api/tenancy/tenants/?group_id={{tenant_group}}'
+        )
+    )
+
+    def __init__(self, *args, **kwargs):
+
+        # Initialize helper selector
+        instance = kwargs.get('instance')
+        if instance and instance.tenant is not None:
+            initial = kwargs.get('initial', {}).copy()
+            initial['tenant_group'] = instance.tenant.group
+            kwargs['initial'] = initial
+
+        super(TenancyForm, self).__init__(*args, **kwargs)

@@ -1,18 +1,15 @@
 {% extends '_base.html' %}
-{% load helpers %}
-
-{% block title %}Circuit Types{% endblock %}
+{% load buttons %}
 
 {% block content %}
 <div class="pull-right">
     {% if perms.circuits.add_circuittype %}
-        <a href="{% url 'circuits:circuittype_add' %}" class="btn btn-primary">
-            <span class="fa fa-plus" aria-hidden="true"></span>
-            Add a circuit type
-        </a>
+        {% add_button 'circuits:circuittype_add' %}
+        {% import_button 'circuits:circuittype_import' %}
     {% endif %}
+    {% export_button content_type %}
 </div>
-<h1>Circuit Types</h1>
+<h1>{% block title %}Circuit Types{% endblock %}</h1>
 <div class="row">
 	<div class="col-md-12">
         {% include 'utilities/obj_table.html' with bulk_delete_url='circuits:circuittype_bulk_delete' %}

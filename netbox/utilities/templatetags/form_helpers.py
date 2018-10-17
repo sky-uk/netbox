@@ -5,12 +5,13 @@ register = template.Library()
 
 
 @register.inclusion_tag('utilities/render_field.html')
-def render_field(field):
+def render_field(field, bulk_nullable=False):
     """
     Render a single form field from template
     """
     return {
         'field': field,
+        'bulk_nullable': bulk_nullable,
     }
 
 
@@ -39,7 +40,9 @@ def widget_type(field):
     """
     Return the widget type
     """
-    try:
+    if hasattr(field, 'widget'):
+        return field.widget.__class__.__name__.lower()
+    elif hasattr(field, 'field'):
         return field.field.widget.__class__.__name__.lower()
-    except AttributeError:
+    else:
         return None

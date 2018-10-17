@@ -1,4 +1,7 @@
+from __future__ import unicode_literals
+
 from django.test import TestCase
+
 from dcim.forms import *
 from dcim.models import *
 
@@ -23,7 +26,7 @@ class DeviceTestCase(TestCase):
             'face': RACK_FACE_FRONT,
             'position': 41,
             'platform': get_id(Platform, 'juniper-junos'),
-            'status': STATUS_ACTIVE,
+            'status': DEVICE_STATUS_ACTIVE,
         })
         self.assertTrue(test.is_valid(), test.fields['position'].choices)
         self.assertTrue(test.save())
@@ -40,7 +43,7 @@ class DeviceTestCase(TestCase):
             'face': RACK_FACE_FRONT,
             'position': 1,
             'platform': get_id(Platform, 'juniper-junos'),
-            'status': STATUS_ACTIVE,
+            'status': DEVICE_STATUS_ACTIVE,
         })
         self.assertFalse(test.is_valid())
 
@@ -56,7 +59,7 @@ class DeviceTestCase(TestCase):
             'face': None,
             'position': None,
             'platform': None,
-            'status': STATUS_ACTIVE,
+            'status': DEVICE_STATUS_ACTIVE,
         })
         self.assertTrue(test.is_valid())
         self.assertTrue(test.save())
@@ -73,7 +76,7 @@ class DeviceTestCase(TestCase):
             'face': RACK_FACE_REAR,
             'position': None,
             'platform': None,
-            'status': STATUS_ACTIVE,
+            'status': DEVICE_STATUS_ACTIVE,
         })
         self.assertTrue(test.is_valid())
         self.assertTrue(test.save())

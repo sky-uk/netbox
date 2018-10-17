@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.contrib import messages
 from django.shortcuts import redirect
 
@@ -15,10 +17,10 @@ def userkey_required():
                 uk = UserKey.objects.get(user=request.user)
             except UserKey.DoesNotExist:
                 messages.warning(request, "This operation requires an active user key, but you don't have one.")
-                return redirect('users:userkey')
+                return redirect('user:userkey')
             if not uk.is_active():
                 messages.warning(request, "This operation is not available. Your user key has not been activated.")
-                return redirect('users:userkey')
+                return redirect('user:userkey')
             return view(request, *args, **kwargs)
         return wrapped_view
     return _decorator

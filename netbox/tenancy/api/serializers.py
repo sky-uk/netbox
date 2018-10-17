@@ -1,39 +1,51 @@
-from rest_framework import serializers
+from __future__ import unicode_literals
 
-from extras.api.serializers import CustomFieldSerializer
+from rest_framework import serializers
+from taggit_serializer.serializers import TaggitSerializer, TagListSerializerField
+
+from extras.api.customfields import CustomFieldModelSerializer
 from tenancy.models import Tenant, TenantGroup
+from utilities.api import ValidatedModelSerializer, WritableNestedSerializer
 
 
 #
 # Tenant groups
 #
 
-class TenantGroupSerializer(serializers.ModelSerializer):
+class TenantGroupSerializer(ValidatedModelSerializer):
 
     class Meta:
         model = TenantGroup
         fields = ['id', 'name', 'slug']
 
 
-class TenantGroupNestedSerializer(TenantGroupSerializer):
+class NestedTenantGroupSerializer(WritableNestedSerializer):
+    url = serializers.HyperlinkedIdentityField(view_name='tenancy-api:tenantgroup-detail')
 
-    class Meta(TenantGroupSerializer.Meta):
-        pass
+    class Meta:
+        model = TenantGroup
+        fields = ['id', 'url', 'name', 'slug']
 
 
 #
 # Tenants
 #
 
-class TenantSerializer(CustomFieldSerializer, serializers.ModelSerializer):
-    group = TenantGroupNestedSerializer()
+class TenantSerializer(TaggitSerializer, CustomFieldModelSerializer):
+    group = NestedTenantGroupSerializer(required=False)
+    tags = TagListSerializerField(required=False)
 
     class Meta:
         model = Tenant
-        fields = ['id', 'name', 'slug', 'group', 'comments', 'custom_fields']
+        fields = [
+            'id', 'name', 'slug', 'group', 'description', 'comments', 'tags', 'custom_fields', 'created',
+            'last_updated',
+        ]
 
 
-class TenantNestedSerializer(TenantSerializer):
+class NestedTenantSerializer(WritableNestedSerializer):
+    url = serializers.HyperlinkedIdentityField(view_name='tenancy-api:tenant-detail')
 
-    class Meta(TenantSerializer.Meta):
-        fields = ['id', 'name', 'slug']
+    class Meta:
+        model = Tenant
+        fields = ['id', 'url', 'name', 'slug']
